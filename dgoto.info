@@ -1,0 +1,4 @@
+name = dgo.to
+description = URL forwarder and smartener for Drupal.org
+core = 7.x
+package = Utilities
