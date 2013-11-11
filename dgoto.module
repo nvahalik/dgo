@@ -18,6 +18,10 @@ define('DGOTO_DRUPAL_API_HOME', 'https://api.drupal.org/');
  * Implements hook_init().
  */
 function dgoto_init() {
+  global $base_url;
+
+  if ($base_url === 'http://admin.dgo.to') { return; }
+
   $request_uri = request_uri();
 
   if ($request_uri === '/' || strpos($request_uri, '/admin') === 0) {
@@ -30,7 +34,7 @@ function dgoto_init() {
       'referrer' => $_SERVER['HTTP_REFERER']
     );
 
-    mpt($track);
+    mptph($track);
   }
 
   $parts = explode('/', substr(html_entity_decode($request_uri), 1));
