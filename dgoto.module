@@ -28,12 +28,18 @@ function dgoto_init() {
     return;
   }
 
+  // Do some cleanup to make things easier.
+  // API Function: dgo.to/hook_menu? map to /a/*.
+  if (substr($request_uri, -1) === '?') {
+    $request_uri = '/a' . $part = substr($request_uri, 0, -1);
+  }
+
+  // If we have measurement, track it.
   if (module_exists('measurement_protocol')) {
     $track = array(
       'page' => $request_uri,
       'referrer' => $_SERVER['HTTP_REFERER']
     );
-
     mptph($track);
   }
 
@@ -46,12 +52,6 @@ function dgoto_init() {
       $comment_hash = '#comment-' . $parts[1];
     }
     drupal_goto(DGOTO_DRUPAL_HOME . 'node/' . $parts[0] . $comment_hash);
-  }
-  // API Function: dgo.to/hook_menu?.
-  elseif (count($parts) == 1 && substr($parts[0], -1) === '?') {
-    $part = substr($parts[0], 0, -1);
-    drupal_goto(DGOTO_DRUPAL_API_HOME . $part);
-    die('Would go to: ' . DGOTO_DRUPAL_API_HOME . $part);
   }
   // Fool-proof API linking: dgo.to/a/hook_menu.
   elseif ($parts[0] === 'a') {
