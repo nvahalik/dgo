@@ -70,6 +70,14 @@ function dgoto_init() {
     // Forward to the user if we find them, the search page otherwise.
     drupal_goto(DGOTO_DRUPAL_HOME . ($uid  ? 'user/' . $uid : 'search/user/' . $user));
   }
+  // Username linking: dgo.to/s/dc_billing_copy.
+  elseif ($parts[0] === 's') {
+    $sandbox_name = $parts[1];
+    $sandbox = dgoto_find_sandbox($sandbox_name);
+
+    // Forward to the user if we find them, the search page otherwise.
+    drupal_goto(DGOTO_DRUPAL_HOME . ($sandbox  ? 'sandbox/' . $sandbox : 'search/site/' . $sandbox_name));
+  }
   // Project issue queue: dgo.to/i/views
   elseif ($parts[0] == 'i') {
     $project_name = dgoto_match_shortcuts($parts[1]);
@@ -201,4 +209,59 @@ function dgoto_match_shortcuts($project_name) {
   );
 
   return (($new_project_name = array_search($project_name, $shortcuts)) !== FALSE) ? $new_project_name : $project_name;
+}
+
+
+/**
+ * Returns the path of the sandbox passed or FALSE.
+ * 
+ * @param string $standbox
+ * @return int or FALSE
+ */
+function dgoto_find_sandbox($sandbox) {
+  $sandbox_location = FALSE;
+  $sandboxes = cache_get('@sandboxes');
+
+  $sandboxes = ($sandboxes == NULL || !is_array($sandboxes->data)) ? array() : $sandboxes->data;
+
+  if (($sandbox_location = array_search($sandbox, $sandboxes)) === FALSE) {
+    // Load the page.  Here, we do a search for sandboxes only.
+    $search_page = drupal_http_request(DGOTO_DRUPAL_HOME . 'search/site/' . $sandbox . '?f%5B0%5D=&f%5B1%5D=&f%5B2%5D=&f%5B3%5D=&f%5B4%5D=sm_field_project_type%3Asandbox&f%5B5%5D=ss_meta_type%3Amodule&solrsort=iss_project_release_usage+desc');
+
+    // Look for the Sandbox on the search page.
+    $sandbox_location = _dgoto_search_for_sandbox_in_drupal_search_page($sandbox, $search_page->data);
+  }
+
+  // Save what we found to the cache.
+  if ($sandbox_location) {
+    $sandboxes[$sandbox_location] = $sandbox;
+    cache_set('@sandboxes', $sandboxes);
+  }
+
+  return $sandbox_location;
+}
+
+/**
+ * Looks for a drupal.org sandbox id in a search results page.
+ *
+ * @param string $sandbox 
+ * @param string $content 
+ * @return int or FALSE
+ */
+function _dgoto_search_for_sandbox_in_drupal_search_page($sandbox, $content) {
+  // Look for a URL going to a user matching that exact name.
+  preg_match_all('@<a href="' . DGOTO_DRUPAL_HOME . 'sandbox/([a-z_]*/(\d+))">@i', $content, $matches);
+
+  if (count($matches[0]) > 0) {
+    foreach ($matches[2] as $match_id => $possible_project_id) {
+      // We load the Git page because it actually has the name of the project inside.
+      $git_page = drupal_http_request(DGOTO_DRUPAL_HOME . 'project/' . $possible_project_id . '/git-instructions');
+      
+      if (strpos($git_page->data, '<code>cd ' . $sandbox . '</code>') !== FALSE) {
+        return $matches[1][$match_id];
+      }
+    }
+  }
+
+  return FALSE;
 }
