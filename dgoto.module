@@ -20,11 +20,13 @@ define('DGOTO_DRUPAL_API_HOME', 'https://api.drupal.org/');
 function dgoto_init() {
   global $base_url;
 
-  if ($base_url === 'http://admin.dgo.to') { return; }
+  if ($base_url === variable_get('dgoto_admin_url', 'http://admin.dgo.to')) { 
+    return; 
+  }
 
   $request_uri = request_uri();
 
-  if ($request_uri === '/' || strpos($request_uri, '/admin') === 0) {
+  if ($request_uri === '/') {
     return;
   }
 
