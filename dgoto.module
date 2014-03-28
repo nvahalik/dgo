@@ -15,6 +15,11 @@ define('DGOTO_DRUPAL_HOME', 'https://drupal.org/');
 define('DGOTO_DRUPAL_API_HOME', 'https://api.drupal.org/');
 
 /**
+ * Define the Groups home page URL.
+ */
+define('DGOTO_DRUPAL_GROUPS_HOME', 'https://groups.drupal.org/');
+
+/**
  * Implements hook_init().
  */
 function dgoto_init() {
@@ -58,6 +63,10 @@ function dgoto_init() {
   // Fool-proof API linking: dgo.to/a/hook_menu.
   elseif ($parts[0] === 'a') {
     drupal_goto(DGOTO_DRUPAL_API_HOME . $parts[1]);
+  }
+  // Groups.
+  elseif ($parts[0] === 'g') {
+    drupal_goto(DGOTO_DRUPAL_GROUPS_HOME . $parts[1]);
   }
   // Project linking: dgo.to/views.
   elseif (count($parts) === 1 && substr($parts[0], 0, 1) !== '@') {
