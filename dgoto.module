@@ -73,6 +73,11 @@ function dgoto_init() {
     $project_name = dgoto_match_shortcuts($parts[0]);
     drupal_goto(DGOTO_DRUPAL_HOME . 'project/' . $project_name);
   }
+  elseif (count($parts) === 2 && substr($parts[0], 0, 1) !== '@' && in_array($parts[1], array('docs'))) {
+    $project_name = dgoto_match_shortcuts($parts[0]);
+    $docs_link = _dgoto_search_for_docs_or_readme_link($project_name);
+    drupal_goto($docs_link);
+  }
   // Username linking: dgo.to/@nvahalik.
   elseif (count($parts) == 1 && substr($parts[0], 0, 1) === '@') {
     $user = urlencode(substr(urldecode($parts[0]), 1));
@@ -275,4 +280,62 @@ function _dgoto_search_for_sandbox_in_drupal_search_page($sandbox, $content) {
   }
 
   return FALSE;
+}
+
+/**
+ * For a given project name, attempts to find documentation.  It first will
+ * look for a documentation link on the page itself.  If it can't find that,
+ * it will then reach out to the Git repository and look for a README file,
+ * looking for a README.md, README.mdown, README.markdown, README.txt, and
+ * finally README (no extension).
+ *
+ * @param project name
+ * @return string
+ **/
+function _dgoto_search_for_docs_or_readme_link($project) {
+
+  // Is it cached?  If so, use that.
+  if (($cached = cache_get('docs-' . $project)) && !empty($cached->data)) {
+    return $cached->data;
+  }
+  
+  // First, we look on the project page for "Read documentation"
+  $project_page_source = drupal_http_request(DGOTO_DRUPAL_HOME . 'project/' . $project);
+  if ($project_page_source->code != 200) {
+    // We have a problem, then.
+    mpte('Error', 'Bad Docs Project', $project);
+    cache_set('docs-' . $project, DGOTO_DRUPAL_HOME . 'project/' . $project, 'cache', time() + 86400);
+    return DGOTO_DRUPAL_HOME . 'project/' . $project;
+  }
+  
+  // Look inside the page for "Read documentation" with a link to the docs page.
+  $matches = array();
+  preg_match_all("/<a href=\"(.*)\">Read documentation<\/a>/", $project_page_source->data, $matches);
+  
+  // If we found one, use it. Cache it.
+  if (!empty($matches[1][0])) {
+    cache_set('docs-' . $project, $matches[1][0], 'cache', time() + 86400);
+    return $matches[1][0];
+  }
+
+  // Grab the "Respository viewer" link and let's look at the Git repo.
+  // Truth is, this may not even be needed, but we'll do it anyway.
+  $git_matches = array();
+  preg_match_all("/<a href=\"(.*)\">Read documentation<\/a>/", $project_page_source->data, $git_matches);
+  $repo_url = $git_matches[1][0];
+    
+  $git_tree_page = drupal_http_request($repo_url . '/tree');
+  if ($git_tree_page->code == 200) {
+    // Not exactly perfect, but this should do the trick.
+    preg_match_all('@(blob/HEAD:/README\.?(?:markdown|mdown|md|txt)?)">README@ui', $git_tree_page->data, $readme_matches);
+    if (!empty($readme_matches[1][0])) {
+
+      // Cache it for a day.
+      cache_set('docs-' . $project, $repo_url . '/' . $readme_matches[1][0], 'cache', time() + 86400);
+      return $repo_url . '/' . $readme_matches[1][0];
+    }
+  }
+
+  // Eh, we got this far and didn't find anything.  Take 'em to the project page.
+  return DGOTO_DRUPAL_HOME . 'project/' . $project;
 }
