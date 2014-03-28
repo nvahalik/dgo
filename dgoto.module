@@ -321,7 +321,7 @@ function _dgoto_search_for_docs_or_readme_link($project) {
   // Grab the "Respository viewer" link and let's look at the Git repo.
   // Truth is, this may not even be needed, but we'll do it anyway.
   $git_matches = array();
-  preg_match_all("/<a href=\"(.*)\">Read documentation<\/a>/", $project_page_source->data, $git_matches);
+  preg_match_all("/<a href=\"(.*)\">Repository viewer<\/a>/", $project_page_source->data, $git_matches);
   $repo_url = $git_matches[1][0];
     
   $git_tree_page = drupal_http_request($repo_url . '/tree');
